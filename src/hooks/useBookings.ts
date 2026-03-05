@@ -1,55 +1,81 @@
 import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Booking {
   id: string;
-  date: string; // YYYY-MM-DD
-  time: string; // e.g. "08:30"
-}
-
-const STORAGE_KEY = "tennis-court-bookings";
-
-function loadBookings(): Booking[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveBookings(bookings: Booking[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+  user_id: string;
+  booking_date: string;
+  time_slot: string;
+  created_at: string;
 }
 
 export function useBookings() {
-  const [bookings, setBookings] = useState<Booking[]>(loadBookings);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  const fetchBookings = useCallback(async () => {
+    const { data } = await supabase
+      .from("bookings")
+      .select("*")
+      .order("booking_date")
+      .order("time_slot");
+    setBookings(data ?? []);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    saveBookings(bookings);
-  }, [bookings]);
+    fetchBookings();
 
-  const addBooking = useCallback((date: string, time: string) => {
-    setBookings((prev) => {
-      const dateBookings = prev.filter((b) => b.date === date);
-      if (dateBookings.length >= 2) return prev;
-      if (prev.some((b) => b.date === date && b.time === time)) return prev;
-      return [...prev, { id: crypto.randomUUID(), date, time }];
+    const channel = supabase
+      .channel("bookings-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
+        fetchBookings();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchBookings]);
+
+  const addBooking = useCallback(async (date: string, time: string) => {
+    if (!user) return;
+    // Check: user can only book 2 slots per day
+    const userDayBookings = bookings.filter(
+      (b) => b.booking_date === date && b.user_id === user.id
+    );
+    if (userDayBookings.length >= 2) return;
+
+    const { error } = await supabase.from("bookings").insert({
+      user_id: user.id,
+      booking_date: date,
+      time_slot: time,
     });
-  }, []);
+    if (!error) await fetchBookings();
+  }, [user, bookings, fetchBookings]);
 
-  const removeBooking = useCallback((id: string) => {
-    setBookings((prev) => prev.filter((b) => b.id !== id));
-  }, []);
+  const removeBooking = useCallback(async (id: string) => {
+    await supabase.from("bookings").delete().eq("id", id);
+    await fetchBookings();
+  }, [fetchBookings]);
 
   const getBookingsForDate = useCallback(
-    (date: string) => bookings.filter((b) => b.date === date),
+    (date: string) => bookings.filter((b) => b.booking_date === date),
     [bookings]
   );
 
-  const isDateFull = useCallback(
-    (date: string) => bookings.filter((b) => b.date === date).length >= 2,
-    [bookings]
+  const getUserBookings = useCallback(
+    () => (user ? bookings.filter((b) => b.user_id === user.id) : []),
+    [bookings, user]
   );
 
-  return { bookings, addBooking, removeBooking, getBookingsForDate, isDateFull };
+  const isDateFullForUser = useCallback(
+    (date: string) => {
+      if (!user) return false;
+      return bookings.filter((b) => b.booking_date === date && b.user_id === user.id).length >= 2;
+    },
+    [bookings, user]
+  );
+
+  return { bookings, loading, addBooking, removeBooking, getBookingsForDate, getUserBookings, isDateFullForUser };
 }

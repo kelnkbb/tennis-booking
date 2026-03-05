@@ -6,9 +6,10 @@ import type { Booking } from "@/hooks/useBookings";
 interface BookingListProps {
   bookings: Booking[];
   onRemove: (id: string) => void;
+  currentUserId?: string;
 }
 
-export default function BookingList({ bookings, onRemove }: BookingListProps) {
+export default function BookingList({ bookings, onRemove, currentUserId }: BookingListProps) {
   if (bookings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -19,9 +20,8 @@ export default function BookingList({ bookings, onRemove }: BookingListProps) {
     );
   }
 
-  // Group by date
   const grouped = bookings.reduce<Record<string, Booking[]>>((acc, b) => {
-    (acc[b.date] ||= []).push(b);
+    (acc[b.booking_date] ||= []).push(b);
     return acc;
   }, {});
 
@@ -32,31 +32,36 @@ export default function BookingList({ bookings, onRemove }: BookingListProps) {
       {sortedDates.map((date) => (
         <div key={date}>
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            {format(new Date(date), "MM月dd日 EEEE", { locale: zhCN })}
+            {format(new Date(date + "T00:00:00"), "MM月dd日 EEEE", { locale: zhCN })}
           </h4>
           <div className="space-y-2">
             {grouped[date]
-              .sort((a, b) => a.time.localeCompare(b.time))
-              .map((booking) => (
-                <div
-                  key={booking.id}
-                  className="flex items-center justify-between bg-secondary rounded-xl px-4 py-3 shadow-sm group transition-all hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <span className="font-medium text-sm text-foreground">
-                      {booking.time} - {nextHour(booking.time)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => onRemove(booking.id)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    aria-label="删除"
+              .sort((a, b) => a.time_slot.localeCompare(b.time_slot))
+              .map((booking) => {
+                const isMine = booking.user_id === currentUserId;
+                return (
+                  <div
+                    key={booking.id}
+                    className="flex items-center justify-between bg-secondary rounded-xl px-4 py-3 shadow-sm"
                   >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${isMine ? "bg-primary" : "bg-muted-foreground"}`} />
+                      <span className="font-medium text-sm text-foreground">
+                        {booking.time_slot} - {nextHour(booking.time_slot)}
+                      </span>
+                    </div>
+                    {isMine && (
+                      <button
+                        onClick={() => onRemove(booking.id)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        aria-label="删除"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
       ))}
@@ -66,6 +71,5 @@ export default function BookingList({ bookings, onRemove }: BookingListProps) {
 
 function nextHour(time: string): string {
   const [h, m] = time.split(":").map(Number);
-  const next = h + 1;
-  return `${String(next).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
