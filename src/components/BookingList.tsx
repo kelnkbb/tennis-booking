@@ -3,6 +3,8 @@ import { zhCN } from "date-fns/locale";
 import { X, Clock } from "lucide-react";
 import type { Booking } from "@/hooks/useBookings";
 
+// username is optionally available on Booking
+
 interface BookingListProps {
   bookings: Booking[];
   onRemove: (id: string) => void;
@@ -51,7 +53,12 @@ export default function BookingList({ bookings, onRemove, currentUserId, isAdmin
                       <span className="font-medium text-sm text-foreground">
                         {booking.time_slot} - {nextHour(booking.time_slot)}
                       </span>
-                      {!isMine && (
+                      {isAdmin && !isMine && booking.username && (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          {booking.username}
+                        </span>
+                      )}
+                      {!isAdmin && !isMine && (
                         <span className="text-xs text-muted-foreground">已预订</span>
                       )}
                     </div>

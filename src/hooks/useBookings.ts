@@ -8,6 +8,7 @@ export interface Booking {
   booking_date: string;
   time_slot: string;
   created_at: string;
+  username?: string;
 }
 
 export function useBookings() {
@@ -16,12 +17,17 @@ export function useBookings() {
   const { user } = useAuth();
 
   const fetchBookings = useCallback(async () => {
-    const { data } = await supabase
-      .from("bookings")
-      .select("*")
-      .order("booking_date")
-      .order("time_slot");
-    setBookings(data ?? []);
+    const [bookingsRes, profilesRes] = await Promise.all([
+      supabase.from("bookings").select("*").order("booking_date").order("time_slot"),
+      supabase.from("profiles").select("user_id, username"),
+    ]);
+    const profiles = profilesRes.data ?? [];
+    const usernameMap = Object.fromEntries(profiles.map((p) => [p.user_id, p.username]));
+    const enriched = (bookingsRes.data ?? []).map((b) => ({
+      ...b,
+      username: usernameMap[b.user_id] ?? "未知",
+    }));
+    setBookings(enriched);
     setLoading(false);
   }, []);
 
