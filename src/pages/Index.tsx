@@ -6,12 +6,14 @@ import TimeSlotPicker from "@/components/TimeSlotPicker";
 import BookingList from "@/components/BookingList";
 import { useBookings } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
-import { MapPin, CalendarDays, ListChecks, LogOut, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { MapPin, CalendarDays, ListChecks, LogOut, User, Shield } from "lucide-react";
 
 export default function Index() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [showMyBookings, setShowMyBookings] = useState(false);
-  const { user, username, signOut } = useAuth();
+  const { user, username, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
   const { bookings, addBooking, removeBooking, getBookingsForDate, getUserBookings, isDateFullForUser } =
     useBookings();
 
@@ -29,7 +31,6 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-10 backdrop-blur-md bg-background/80 border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -38,10 +39,19 @@ export default function Index() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground">网球场馆预订</h1>
-              <p className="text-xs text-muted-foreground">每天最多预订2小时</p>
+              <p className="text-xs text-muted-foreground">每人每天最多预订2小时</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                onClick={() => navigate("/admin")}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-accent text-accent-foreground hover:opacity-90 transition-all"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                管理
+              </button>
+            )}
             <button
               onClick={() => setShowMyBookings(!showMyBookings)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
@@ -66,7 +76,6 @@ export default function Index() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {showMyBookings ? (
-          /* My Bookings View */
           <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
             <div className="flex items-center gap-2 mb-4">
               <User className="w-5 h-5 text-primary" />
@@ -77,11 +86,10 @@ export default function Index() {
                 </span>
               )}
             </div>
-            <BookingList bookings={myBookings} onRemove={removeBooking} currentUserId={user?.id} />
+            <BookingList bookings={myBookings} onRemove={removeBooking} currentUserId={user?.id} isAdmin={isAdmin} />
           </section>
         ) : (
           <>
-            {/* Calendar Section */}
             <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <CalendarDays className="w-5 h-5 text-primary" />
@@ -103,7 +111,6 @@ export default function Index() {
               </div>
             </section>
 
-            {/* Time Slots */}
             <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -127,7 +134,6 @@ export default function Index() {
               />
             </section>
 
-            {/* All Bookings */}
             <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <ListChecks className="w-5 h-5 text-primary" />
@@ -138,7 +144,7 @@ export default function Index() {
                   </span>
                 )}
               </div>
-              <BookingList bookings={bookings} onRemove={removeBooking} currentUserId={user?.id} />
+              <BookingList bookings={bookings} onRemove={removeBooking} currentUserId={user?.id} isAdmin={isAdmin} />
             </section>
           </>
         )}

@@ -7,9 +7,10 @@ interface BookingListProps {
   bookings: Booking[];
   onRemove: (id: string) => void;
   currentUserId?: string;
+  isAdmin?: boolean;
 }
 
-export default function BookingList({ bookings, onRemove, currentUserId }: BookingListProps) {
+export default function BookingList({ bookings, onRemove, currentUserId, isAdmin }: BookingListProps) {
   if (bookings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
@@ -39,6 +40,7 @@ export default function BookingList({ bookings, onRemove, currentUserId }: Booki
               .sort((a, b) => a.time_slot.localeCompare(b.time_slot))
               .map((booking) => {
                 const isMine = booking.user_id === currentUserId;
+                const canDelete = isMine || isAdmin;
                 return (
                   <div
                     key={booking.id}
@@ -49,8 +51,11 @@ export default function BookingList({ bookings, onRemove, currentUserId }: Booki
                       <span className="font-medium text-sm text-foreground">
                         {booking.time_slot} - {nextHour(booking.time_slot)}
                       </span>
+                      {!isMine && (
+                        <span className="text-xs text-muted-foreground">已预订</span>
+                      )}
                     </div>
-                    {isMine && (
+                    {canDelete && (
                       <button
                         onClick={() => onRemove(booking.id)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
