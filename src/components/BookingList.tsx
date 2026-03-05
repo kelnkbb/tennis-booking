@@ -3,6 +3,8 @@ import { zhCN } from "date-fns/locale";
 import { X, Clock } from "lucide-react";
 import type { Booking } from "@/hooks/useBookings";
 
+// username is optionally available on Booking
+
 interface BookingListProps {
   bookings: Booking[];
   onRemove: (id: string) => void;

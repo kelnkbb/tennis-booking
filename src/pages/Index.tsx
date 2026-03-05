@@ -8,6 +8,7 @@ import { useBookings } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, ListChecks, LogOut, User, Shield, Send } from "lucide-react";
+import AnnouncementDialog from "@/components/AnnouncementDialog";
 import { toast } from "sonner";
 
 export default function Index() {
@@ -102,6 +103,7 @@ export default function Index() {
         </div>
       </header>
 
+      <AnnouncementDialog />
       <main className="relative max-w-4xl mx-auto px-4 py-6 space-y-6">
         {showMyBookings ? (
           <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
