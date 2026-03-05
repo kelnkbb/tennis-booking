@@ -14,13 +14,13 @@ export default function Index() {
   const [showMyBookings, setShowMyBookings] = useState(false);
   const { user, username, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
-  const { bookings, addBooking, removeBooking, getBookingsForDate, getUserBookings, isDateFullForUser } =
+  const { bookings, addBooking, removeBooking, getBookingsForDate, getUserBookings, isDateFullyBooked } =
     useBookings();
 
   const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
   const dateBookings = dateStr ? getBookingsForDate(dateStr) : [];
   const myDateBookings = dateBookings.filter((b) => b.user_id === user?.id);
-  const dateFull = dateStr ? isDateFullForUser(dateStr) : false;
+  const dateFull = dateStr ? isDateFullyBooked(dateStr) : false;
 
   const handleSelectSlot = (time: string) => {
     if (!dateStr) return;
@@ -39,7 +39,7 @@ export default function Index() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground">网球场馆预订</h1>
-              <p className="text-xs text-muted-foreground">每人每天最多预订2小时</p>
+              <p className="text-xs text-muted-foreground">每天总计最多预订2小时</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export default function Index() {
                   disabled={(date) => {
                     if (date < new Date(new Date().toDateString())) return true;
                     const d = format(date, "yyyy-MM-dd");
-                    return isDateFullForUser(d);
+                    return isDateFullyBooked(d);
                   }}
                   className="rounded-xl"
                 />
@@ -121,7 +121,7 @@ export default function Index() {
                   <span className="text-xs text-muted-foreground bg-secondary px-3 py-1 rounded-full">
                     {format(selectedDate!, "MM月dd日", { locale: zhCN })}
                     {" · "}
-                    {myDateBookings.length}/2 已选
+                    {dateBookings.length}/2 已被预订
                   </span>
                 )}
               </div>
