@@ -40,11 +40,17 @@ export function useBookings() {
 
   const addBooking = useCallback(async (date: string, time: string) => {
     if (!user) return;
-    // Check: user can only book 2 slots per day
+    // Per-user limit: max 2 slots per day for THIS user
     const userDayBookings = bookings.filter(
       (b) => b.booking_date === date && b.user_id === user.id
     );
     if (userDayBookings.length >= 2) return;
+
+    // Check slot not already taken by anyone
+    const slotTaken = bookings.some(
+      (b) => b.booking_date === date && b.time_slot === time
+    );
+    if (slotTaken) return;
 
     const { error } = await supabase.from("bookings").insert({
       user_id: user.id,
@@ -69,6 +75,7 @@ export function useBookings() {
     [bookings, user]
   );
 
+  // Per-user check: has THIS user booked 2 slots on this date?
   const isDateFullForUser = useCallback(
     (date: string) => {
       if (!user) return false;
