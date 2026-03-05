@@ -40,11 +40,10 @@ export function useBookings() {
 
   const addBooking = useCallback(async (date: string, time: string) => {
     if (!user) return;
-    // Per-user limit: max 2 slots per day for THIS user
-    const userDayBookings = bookings.filter(
-      (b) => b.booking_date === date && b.user_id === user.id
-    );
-    if (userDayBookings.length >= 2) return;
+
+    // Global daily limit: all users combined max 2 bookings per day
+    const dayBookings = bookings.filter((b) => b.booking_date === date);
+    if (dayBookings.length >= 2) return;
 
     // Check slot not already taken by anyone
     const slotTaken = bookings.some(
@@ -75,14 +74,11 @@ export function useBookings() {
     [bookings, user]
   );
 
-  // Per-user check: has THIS user booked 2 slots on this date?
-  const isDateFullForUser = useCallback(
-    (date: string) => {
-      if (!user) return false;
-      return bookings.filter((b) => b.booking_date === date && b.user_id === user.id).length >= 2;
-    },
-    [bookings, user]
+  // Global check: has this date reached 2 total bookings?
+  const isDateFullyBooked = useCallback(
+    (date: string) => bookings.filter((b) => b.booking_date === date).length >= 2,
+    [bookings]
   );
 
-  return { bookings, loading, addBooking, removeBooking, getBookingsForDate, getUserBookings, isDateFullForUser };
+  return { bookings, loading, addBooking, removeBooking, getBookingsForDate, getUserBookings, isDateFullyBooked };
 }
