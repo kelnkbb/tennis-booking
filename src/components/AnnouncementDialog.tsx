@@ -8,20 +8,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const ANNOUNCEMENT_KEY = "tennis_announcement_seen_v1";
-
 export default function AnnouncementDialog() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const seen = localStorage.getItem(ANNOUNCEMENT_KEY);
-    if (!seen) {
-      setOpen(true);
-    }
+    // Show every session (on mount)
+    setOpen(true);
   }, []);
 
   const handleClose = () => {
-    localStorage.setItem(ANNOUNCEMENT_KEY, "true");
     setOpen(false);
   };
 
