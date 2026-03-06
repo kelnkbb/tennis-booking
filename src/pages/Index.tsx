@@ -40,9 +40,18 @@ export default function Index() {
     for (const slot of selectedSlots) {
       await addBooking(dateStr, slot);
     }
+    // Send notification to admin
+    try {
+      await supabase.functions.invoke("notify-booking", {
+        body: { username: username ?? "未知用户", booking_date: dateStr, time_slots: selectedSlots },
+      });
+    } catch (e) {
+      console.error("Notification failed:", e);
+    }
+    const count = selectedSlots.length;
     setSelectedSlots([]);
     setSubmitting(false);
-    toast.success(`成功预订 ${selectedSlots.length} 个时段！`);
+    toast.success(`成功预订 ${count} 个时段！`);
     setShowPostBooking(true);
   };
 
