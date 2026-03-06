@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, ListChecks, LogOut, User, Shield, Send } from "lucide-react";
 import AnnouncementDialog from "@/components/AnnouncementDialog";
+import PostBookingDialog from "@/components/PostBookingDialog";
 import { toast } from "sonner";
 
 export default function Index() {
@@ -16,6 +17,7 @@ export default function Index() {
   const [showMyBookings, setShowMyBookings] = useState(false);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [showPostBooking, setShowPostBooking] = useState(false);
   const { user, username, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const { bookings, addBooking, removeBooking, getBookingsForDate, getUserBookings, isDateFullyBooked } =
@@ -41,6 +43,7 @@ export default function Index() {
     setSelectedSlots([]);
     setSubmitting(false);
     toast.success(`成功预订 ${selectedSlots.length} 个时段！`);
+    setShowPostBooking(true);
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -104,6 +107,7 @@ export default function Index() {
       </header>
 
       <AnnouncementDialog />
+      <PostBookingDialog open={showPostBooking} onClose={() => setShowPostBooking(false)} />
       <main className="relative max-w-4xl mx-auto px-4 py-6 space-y-6">
         {showMyBookings ? (
           <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
