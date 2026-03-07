@@ -6,11 +6,13 @@ import { Calendar } from "@/components/ui/calendar";
 import TimeSlotPicker from "@/components/TimeSlotPicker";
 import BookingList from "@/components/BookingList";
 import { useBookings } from "@/hooks/useBookings";
+import { useBalance } from "@/hooks/useBalance";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { CalendarDays, ListChecks, LogOut, User, Shield, Send } from "lucide-react";
+import { CalendarDays, ListChecks, LogOut, User, Shield, Send, Wallet } from "lucide-react";
 import AnnouncementDialog from "@/components/AnnouncementDialog";
 import PostBookingDialog from "@/components/PostBookingDialog";
+import PaymentChoiceDialog from "@/components/PaymentChoiceDialog";
 import { toast } from "sonner";
 
 export default function Index() {
@@ -19,10 +21,12 @@ export default function Index() {
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showPostBooking, setShowPostBooking] = useState(false);
+  const [showPaymentChoice, setShowPaymentChoice] = useState(false);
   const { user, username, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const { bookings, addBooking, removeBooking, getBookingsForDate, getUserBookings, isDateFullyBooked } =
     useBookings();
+  const { balance, loading: balanceLoading, deductBalance, hasEverToppedUp, fetchBalance, fetchTransactions } = useBalance();
 
   const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
   const dateBookings = dateStr ? getBookingsForDate(dateStr) : [];
@@ -37,23 +41,52 @@ export default function Index() {
 
   const handleSubmit = async () => {
     if (!dateStr || selectedSlots.length === 0) return;
-    setSubmitting(true);
-    for (const slot of selectedSlots) {
-      await addBooking(dateStr, slot);
+    const totalCost = selectedSlots.length * 60;
+
+    // Check balance
+    if (balance >= totalCost && hasEverToppedUp()) {
+      // Has enough balance, auto-deduct
+      setSubmitting(true);
+      const success = await deductBalance(totalCost, `预订 ${dateStr} ${selectedSlots.join("、")}`);
+      if (!success) {
+        toast.error("余额扣除失败");
+        setSubmitting(false);
+        return;
+      }
+      for (const slot of selectedSlots) {
+        await addBooking(dateStr, slot);
+      }
+      // Send notification
+      try {
+        await supabase.functions.invoke("notify-booking", {
+          body: { username: username ?? "未知用户", booking_date: dateStr, time_slots: selectedSlots },
+        });
+      } catch (e) {
+        console.error("Notification failed:", e);
+      }
+      const count = selectedSlots.length;
+      setSelectedSlots([]);
+      setSubmitting(false);
+      toast.success(`成功预订 ${count} 个时段！已扣除 ¥${totalCost}`);
+    } else {
+      // No balance or never topped up — show payment choice
+      setSubmitting(true);
+      for (const slot of selectedSlots) {
+        await addBooking(dateStr, slot);
+      }
+      try {
+        await supabase.functions.invoke("notify-booking", {
+          body: { username: username ?? "未知用户", booking_date: dateStr, time_slots: selectedSlots },
+        });
+      } catch (e) {
+        console.error("Notification failed:", e);
+      }
+      const count = selectedSlots.length;
+      setSelectedSlots([]);
+      setSubmitting(false);
+      toast.success(`成功预订 ${count} 个时段！`);
+      setShowPaymentChoice(true);
     }
-    // Send notification to admin
-    try {
-      await supabase.functions.invoke("notify-booking", {
-        body: { username: username ?? "未知用户", booking_date: dateStr, time_slots: selectedSlots },
-      });
-    } catch (e) {
-      console.error("Notification failed:", e);
-    }
-    const count = selectedSlots.length;
-    setSelectedSlots([]);
-    setSubmitting(false);
-    toast.success(`成功预订 ${count} 个时段！`);
-    setShowPostBooking(true);
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -85,6 +118,11 @@ export default function Index() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Balance indicator */}
+            <div className="flex items-center gap-1 px-3 py-2 rounded-xl bg-secondary text-sm">
+              <Wallet className="w-3.5 h-3.5 text-primary" />
+              <span className="font-medium text-foreground">¥{balanceLoading ? "..." : balance}</span>
+            </div>
             {isAdmin && (
               <button
                 onClick={() => navigate("/admin")}
@@ -106,6 +144,14 @@ export default function Index() {
               {username ?? "我"}
             </button>
             <button
+              onClick={() => navigate("/profile")}
+              className="p-2 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all"
+              aria-label="个人中心"
+              title="个人中心"
+            >
+              <User className="w-4 h-4" />
+            </button>
+            <button
               onClick={signOut}
               className="p-2 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all"
               aria-label="退出登录"
@@ -118,6 +164,7 @@ export default function Index() {
 
       <AnnouncementDialog />
       <PostBookingDialog open={showPostBooking} onClose={() => setShowPostBooking(false)} />
+      <PaymentChoiceDialog open={showPaymentChoice} onClose={() => { setShowPaymentChoice(false); fetchBalance(); fetchTransactions(); }} />
       <main className="relative max-w-4xl mx-auto px-4 py-6 space-y-6">
         {showMyBookings ? (
           <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
@@ -180,7 +227,13 @@ export default function Index() {
 
               {/* Submit button */}
               {selectedSlots.length > 0 && (
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    费用: <strong className="text-foreground">¥{selectedSlots.length * 60}</strong>
+                    {balance >= selectedSlots.length * 60 && hasEverToppedUp() && (
+                      <span className="text-xs text-primary ml-2">（余额扣除）</span>
+                    )}
+                  </span>
                   <button
                     onClick={handleSubmit}
                     disabled={submitting}

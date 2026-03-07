@@ -20,7 +20,7 @@ export default function PostBookingDialog({ open, onClose, startStep = "xianyu" 
   const [step, setStep] = useState<"xianyu" | "wechat">(startStep);
 
   const handleClose = () => {
-    setStep("xianyu");
+    setStep(startStep);
     onClose();
   };
 
