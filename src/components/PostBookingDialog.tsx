@@ -13,13 +13,14 @@ import wechatImg from "@/assets/admin-wechat.jpg";
 interface Props {
   open: boolean;
   onClose: () => void;
+  startStep?: "xianyu" | "wechat";
 }
 
-export default function PostBookingDialog({ open, onClose }: Props) {
-  const [step, setStep] = useState<"xianyu" | "wechat">("xianyu");
+export default function PostBookingDialog({ open, onClose, startStep = "xianyu" }: Props) {
+  const [step, setStep] = useState<"xianyu" | "wechat">(startStep);
 
   const handleClose = () => {
-    setStep("xianyu");
+    setStep(startStep);
     onClose();
   };
 
@@ -40,7 +41,7 @@ export default function PostBookingDialog({ open, onClose }: Props) {
               <img
                 src={xianyuImg}
                 alt="咸鱼下单链接"
-                className="w-full rounded-xl border border-border"
+                className="w-full max-h-[40vh] object-contain rounded-xl border border-border"
               />
             </div>
             <DialogFooter>
