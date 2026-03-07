@@ -11,7 +11,6 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
-<<<<<<< HEAD
   const [resendLoading, setResendLoading] = useState(false);
   const { signIn, signUp, resendVerificationEmail } = useAuth();
   const navigate = useNavigate();
@@ -29,11 +28,6 @@ export default function AuthPage() {
   const isEmailNotConfirmedError = (msg: string) =>
     /confirm|验证|verified|unconfirmed/i.test(msg);
 
-=======
-  const { signIn, signUp } = useAuth();
-  const navigate = useNavigate();
-
->>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -110,7 +104,6 @@ export default function AuthPage() {
           </div>
 
           {error && (
-<<<<<<< HEAD
             <div className="space-y-1.5">
               <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
               {isLogin && isEmailNotConfirmedError(error) && (
@@ -137,12 +130,6 @@ export default function AuthPage() {
                 {resendLoading ? "发送中…" : "未收到邮件？重新发送验证邮件"}
               </button>
             </div>
-=======
-            <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
-          )}
-          {success && (
-            <p className="text-sm text-accent bg-accent/10 rounded-lg px-3 py-2">{success}</p>
->>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
           )}
 
           <button

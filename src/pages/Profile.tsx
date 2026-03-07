@@ -2,14 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBalance } from "@/hooks/useBalance";
-<<<<<<< HEAD
 import { useRechargeRequests } from "@/hooks/useRechargeRequests";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Mail, Wallet, History, Save, PlusCircle, Loader2 } from "lucide-react";
-=======
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Mail, Wallet, History, Save } from "lucide-react";
->>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -17,7 +12,6 @@ import { zhCN } from "date-fns/locale";
 export default function ProfilePage() {
   const { user, username } = useAuth();
   const { balance, transactions, loading: balanceLoading } = useBalance();
-<<<<<<< HEAD
   const { requests, loading: requestsLoading, submitRequest } = useRechargeRequests();
   const navigate = useNavigate();
   const [editUsername, setEditUsername] = useState("");
@@ -25,11 +19,6 @@ export default function ProfilePage() {
   const [rechargeAmount, setRechargeAmount] = useState("");
   const [rechargeNote, setRechargeNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-=======
-  const navigate = useNavigate();
-  const [editUsername, setEditUsername] = useState("");
-  const [saving, setSaving] = useState(false);
->>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
 
   useEffect(() => {
     if (username) setEditUsername(username);
@@ -68,7 +57,6 @@ export default function ProfilePage() {
     }
   };
 
-<<<<<<< HEAD
   const handleRechargeSubmit = async () => {
     setSubmitting(true);
     const { error } = await submitRequest(Number(rechargeAmount), rechargeNote);
@@ -98,8 +86,6 @@ export default function ProfilePage() {
     }
   };
 
-=======
->>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 backdrop-blur-md bg-background/80 border-b border-border">
@@ -162,7 +148,6 @@ export default function ProfilePage() {
             <span className="text-2xl font-bold text-primary">¥{balanceLoading ? "..." : balance}</span>
             <span className="text-xs text-muted-foreground">当前余额</span>
           </div>
-<<<<<<< HEAD
 
           {/* 快捷充值申请 */}
           <div className="border-t border-border pt-4 space-y-3">
@@ -209,8 +194,6 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
-=======
->>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
         </section>
 
         {/* Transaction History */}
