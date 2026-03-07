@@ -5,44 +5,49 @@ import { useNavigate } from "react-router-dom";
 import { useBookings } from "@/hooks/useBookings";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { Shield, ArrowLeft, Users, CalendarDays, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Shield, ArrowLeft, Users, CalendarDays, Trash2, ChevronDown, ChevronUp, Wallet, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserProfile {
   user_id: string;
   username: string;
   created_at: string;
-  email?: string;
   roles: string[];
+  balance: number;
 }
 
 export default function AdminPage() {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { bookings, removeBooking } = useBookings();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [activeTab, setActiveTab] = useState<"users" | "bookings">("users");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [topupUserId, setTopupUserId] = useState<string | null>(null);
+  const [topupAmount, setTopupAmount] = useState("");
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) {
-      navigate("/");
-    }
+    if (!authLoading && !isAdmin) navigate("/");
   }, [isAdmin, authLoading, navigate]);
 
   const fetchUsers = async () => {
-    const { data: profiles } = await supabase.from("profiles").select("*");
-    const { data: roles } = await supabase.from("user_roles").select("*");
+    const [profilesRes, rolesRes, balancesRes] = await Promise.all([
+      supabase.from("profiles").select("*"),
+      supabase.from("user_roles").select("*"),
+      supabase.from("balances").select("*"),
+    ]);
+    const profiles = profilesRes.data ?? [];
+    const roles = rolesRes.data ?? [];
+    const balances = balancesRes.data ?? [];
 
-    if (profiles) {
-      const userList: UserProfile[] = profiles.map((p) => ({
-        user_id: p.user_id,
-        username: p.username,
-        created_at: p.created_at,
-        roles: roles?.filter((r) => r.user_id === p.user_id).map((r) => r.role) ?? [],
-      }));
-      setUsers(userList);
-    }
+    const userList: UserProfile[] = profiles.map((p) => ({
+      user_id: p.user_id,
+      username: p.username,
+      created_at: p.created_at,
+      roles: roles.filter((r) => r.user_id === p.user_id).map((r) => r.role),
+      balance: balances.find((b) => b.user_id === p.user_id)?.amount ?? 0,
+    }));
+    setUsers(userList);
   };
 
   useEffect(() => {
@@ -50,16 +55,65 @@ export default function AdminPage() {
   }, [isAdmin]);
 
   const handleDeleteUser = async (userId: string, username: string) => {
-    if (!confirm(`确定要删除用户 "${username}" 吗？该用户的所有预订也会被删除。`)) return;
-
-    // Delete user's bookings first
+    if (!confirm(`确定要删除用户 "${username}" 吗？`)) return;
     await supabase.from("bookings").delete().eq("user_id", userId);
-    // Delete user's roles
+    await supabase.from("balance_transactions").delete().eq("user_id", userId);
+    await supabase.from("balances").delete().eq("user_id", userId);
     await supabase.from("user_roles").delete().eq("user_id", userId);
-    // Delete user's profile
     await supabase.from("profiles").delete().eq("user_id", userId);
-
     toast.success(`用户 "${username}" 已删除`);
+    await fetchUsers();
+  };
+
+  const handleTopup = async (userId: string) => {
+    const amount = parseInt(topupAmount);
+    if (!amount || amount <= 0) { toast.error("请输入有效金额"); return; }
+    
+    const targetUser = users.find(u => u.user_id === userId);
+    // Update balance
+    const { error: updateErr } = await supabase
+      .from("balances")
+      .update({ amount: (targetUser?.balance ?? 0) + amount, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+    
+    if (updateErr) { toast.error("充值失败"); return; }
+
+    // Log transaction
+    await supabase.from("balance_transactions").insert({
+      user_id: userId,
+      amount: amount,
+      type: "topup",
+      description: `管理员充值 ¥${amount}`,
+      created_by: user?.id,
+    });
+
+    toast.success(`已为 ${targetUser?.username} 充值 ¥${amount}`);
+    setTopupUserId(null);
+    setTopupAmount("");
+    await fetchUsers();
+  };
+
+  const handleRefund = async (userId: string, bookingId: string) => {
+    const targetUser = users.find(u => u.user_id === userId);
+    // Refund 60
+    const { error } = await supabase
+      .from("balances")
+      .update({ amount: (targetUser?.balance ?? 0) + 60, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+    
+    if (error) { toast.error("退款失败"); return; }
+
+    await supabase.from("balance_transactions").insert({
+      user_id: userId,
+      amount: 60,
+      type: "refund",
+      description: "管理员退还预订费用 ¥60",
+      created_by: user?.id,
+    });
+
+    // Delete the booking
+    await removeBooking(bookingId);
+    toast.success(`已退还 ¥60 给 ${targetUser?.username}`);
     await fetchUsers();
   };
 
@@ -75,10 +129,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 backdrop-blur-md bg-background/80 border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all"
-          >
+          <button onClick={() => navigate("/")} className="p-2 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
@@ -93,30 +144,21 @@ export default function AdminPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab("users")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === "users"
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            用户管理
-            <span className="text-xs opacity-75">({users.length})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("bookings")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === "bookings"
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-            }`}
-          >
-            <CalendarDays className="w-4 h-4" />
-            预订管理
-            <span className="text-xs opacity-75">({bookings.length})</span>
-          </button>
+          {(["users", "bookings"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                activeTab === tab
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {tab === "users" ? <Users className="w-4 h-4" /> : <CalendarDays className="w-4 h-4" />}
+              {tab === "users" ? "用户管理" : "预订管理"}
+              <span className="text-xs opacity-75">({tab === "users" ? users.length : bookings.length})</span>
+            </button>
+          ))}
         </div>
 
         {activeTab === "users" && (
@@ -134,20 +176,26 @@ export default function AdminPage() {
                         </div>
                         <div>
                           <p className="font-medium text-sm text-foreground">{u.username}</p>
-                          <p className="text-xs text-muted-foreground">
-                            预订: {userBookings.length} 场
-                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>预订: {userBookings.length}</span>
+                            <span className="flex items-center gap-0.5">
+                              <Wallet className="w-3 h-3" /> ¥{u.balance}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         {u.roles.includes("admin") && (
-                          <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">
-                            管理员
-                          </span>
+                          <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">管理员</span>
                         )}
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(u.created_at), "MM/dd", { locale: zhCN })}
-                        </span>
+                        {/* Topup button */}
+                        <button
+                          onClick={() => { setTopupUserId(topupUserId === u.user_id ? null : u.user_id); setTopupAmount(""); }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-green-600 hover:bg-green-500/10 transition-colors"
+                          title="充值"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
                         {userBookings.length > 0 && (
                           <button
                             onClick={() => setExpandedUser(isExpanded ? null : u.user_id)}
@@ -166,7 +214,27 @@ export default function AdminPage() {
                         )}
                       </div>
                     </div>
-                    {/* Expanded booking details */}
+
+                    {/* Topup input */}
+                    {topupUserId === u.user_id && (
+                      <div className="px-4 pb-3 pt-1 border-t border-border/50 flex gap-2">
+                        <input
+                          type="number"
+                          placeholder="充值金额"
+                          value={topupAmount}
+                          onChange={(e) => setTopupAmount(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-lg bg-background text-sm border border-border focus:border-primary focus:outline-none"
+                        />
+                        <button
+                          onClick={() => handleTopup(u.user_id)}
+                          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+                        >
+                          充值
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Expanded bookings */}
                     {isExpanded && userBookings.length > 0 && (
                       <div className="px-4 pb-3 pt-1 border-t border-border/50">
                         <p className="text-xs font-medium text-muted-foreground mb-2">预订记录：</p>
@@ -183,12 +251,21 @@ export default function AdminPage() {
                                     {booking.time_slot} - {nextHour(booking.time_slot)}
                                   </span>
                                 </div>
-                                <button
-                                  onClick={() => removeBooking(booking.id)}
-                                  className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleRefund(u.user_id, booking.id)}
+                                    className="p-1 rounded text-muted-foreground hover:text-blue-600 transition-colors"
+                                    title="退款 ¥60"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => removeBooking(booking.id)}
+                                    className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                         </div>
@@ -212,10 +289,7 @@ export default function AdminPage() {
                   .map((booking) => {
                     const booker = users.find((u) => u.user_id === booking.user_id);
                     return (
-                      <div
-                        key={booking.id}
-                        className="flex items-center justify-between bg-secondary rounded-xl px-4 py-3"
-                      >
+                      <div key={booking.id} className="flex items-center justify-between bg-secondary rounded-xl px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-primary" />
                           <div>
@@ -224,17 +298,24 @@ export default function AdminPage() {
                               {" "}
                               {booking.time_slot} - {nextHour(booking.time_slot)}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              预订人: {booker?.username ?? "未知"}
-                            </p>
+                            <p className="text-xs text-muted-foreground">预订人: {booker?.username ?? "未知"}</p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => removeBooking(booking.id)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleRefund(booking.user_id, booking.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-500/10 transition-colors"
+                            title="退款 ¥60 并删除"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => removeBooking(booking.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
