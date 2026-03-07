@@ -10,8 +10,11 @@ interface AuthContextType {
   signUp: (email: string, password: string, username: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+<<<<<<< HEAD
   /** 重新发送邮箱验证邮件（用于注册后或登录提示未验证时） */
   resendVerificationEmail: (email: string) => Promise<{ error: string | null }>;
+=======
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+<<<<<<< HEAD
   const resendVerificationEmail = async (email: string) => {
     const { error } = await supabase.auth.resend({
       type: "signup",
@@ -82,6 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, username, isAdmin, loading, signUp, signIn, signOut, resendVerificationEmail }}>
+=======
+  return (
+    <AuthContext.Provider value={{ user, username, isAdmin, loading, signUp, signIn, signOut }}>
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
       {children}
     </AuthContext.Provider>
   );

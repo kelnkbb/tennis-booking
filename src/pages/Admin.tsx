@@ -5,7 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { useBookings } from "@/hooks/useBookings";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
+<<<<<<< HEAD
 import { Shield, ArrowLeft, Users, CalendarDays, Trash2, ChevronDown, ChevronUp, Wallet, Plus, RotateCcw, CheckCircle, XCircle } from "lucide-react";
+=======
+import { Shield, ArrowLeft, Users, CalendarDays, Trash2, ChevronDown, ChevronUp, Wallet, Plus, RotateCcw } from "lucide-react";
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
 import { toast } from "sonner";
 
 interface UserProfile {
@@ -16,6 +20,7 @@ interface UserProfile {
   balance: number;
 }
 
+<<<<<<< HEAD
 interface RechargeRequestRow {
   id: string;
   user_id: string;
@@ -27,17 +32,26 @@ interface RechargeRequestRow {
   reviewed_by: string | null;
 }
 
+=======
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
 export default function AdminPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { bookings, removeBooking } = useBookings();
   const [users, setUsers] = useState<UserProfile[]>([]);
+<<<<<<< HEAD
   const [rechargeRequests, setRechargeRequests] = useState<RechargeRequestRow[]>([]);
   const [activeTab, setActiveTab] = useState<"users" | "bookings" | "recharge">("users");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [topupUserId, setTopupUserId] = useState<string | null>(null);
   const [topupAmount, setTopupAmount] = useState("");
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+=======
+  const [activeTab, setActiveTab] = useState<"users" | "bookings">("users");
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [topupUserId, setTopupUserId] = useState<string | null>(null);
+  const [topupAmount, setTopupAmount] = useState("");
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
 
   useEffect(() => {
     if (!authLoading && !isAdmin) navigate("/");
@@ -63,6 +77,7 @@ export default function AdminPage() {
     setUsers(userList);
   };
 
+<<<<<<< HEAD
   const fetchRechargeRequests = async () => {
     const { data } = await supabase
       .from("recharge_requests")
@@ -71,14 +86,19 @@ export default function AdminPage() {
     setRechargeRequests((data as RechargeRequestRow[]) ?? []);
   };
 
+=======
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
   useEffect(() => {
     if (isAdmin) fetchUsers();
   }, [isAdmin]);
 
+<<<<<<< HEAD
   useEffect(() => {
     if (isAdmin && activeTab === "recharge") fetchRechargeRequests();
   }, [isAdmin, activeTab]);
 
+=======
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
   const handleDeleteUser = async (userId: string, username: string) => {
     if (!confirm(`确定要删除用户 "${username}" 吗？`)) return;
     await supabase.from("bookings").delete().eq("user_id", userId);
@@ -118,6 +138,7 @@ export default function AdminPage() {
     await fetchUsers();
   };
 
+<<<<<<< HEAD
   const handleApproveRecharge = async (req: RechargeRequestRow) => {
     setReviewingId(req.id);
     const targetUser = users.find((u) => u.user_id === req.user_id);
@@ -175,6 +196,8 @@ export default function AdminPage() {
     await fetchRechargeRequests();
   };
 
+=======
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
   const handleRefund = async (userId: string, bookingId: string) => {
     const targetUser = users.find(u => u.user_id === userId);
     // Refund 60
@@ -225,6 +248,7 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+<<<<<<< HEAD
         <div className="flex flex-wrap gap-2">
           {[
             { key: "users" as const, label: "用户管理", icon: Users, count: users.length },
@@ -236,13 +260,28 @@ export default function AdminPage() {
               onClick={() => setActiveTab(key)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 activeTab === key
+=======
+        <div className="flex gap-2">
+          {(["users", "bookings"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                activeTab === tab
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               }`}
             >
+<<<<<<< HEAD
               <Icon className="w-4 h-4" />
               {label}
               <span className="text-xs opacity-75">({count})</span>
+=======
+              {tab === "users" ? <Users className="w-4 h-4" /> : <CalendarDays className="w-4 h-4" />}
+              {tab === "users" ? "用户管理" : "预订管理"}
+              <span className="text-xs opacity-75">({tab === "users" ? users.length : bookings.length})</span>
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
             </button>
           ))}
         </div>
@@ -364,6 +403,7 @@ export default function AdminPage() {
           </section>
         )}
 
+<<<<<<< HEAD
         {activeTab === "recharge" && (
           <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
             <p className="text-sm text-muted-foreground mb-4">用户提交的充值申请，通过后金额将自动到账。</p>
@@ -424,6 +464,8 @@ export default function AdminPage() {
           </section>
         )}
 
+=======
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
         {activeTab === "bookings" && (
           <section className="bg-card rounded-2xl shadow-md p-4 sm:p-6">
             {bookings.length === 0 ? (

@@ -128,6 +128,7 @@ export type Database = {
         }
         Relationships: []
       }
+<<<<<<< HEAD
       recharge_requests: {
         Row: {
           id: string
@@ -161,6 +162,8 @@ export type Database = {
         }
         Relationships: []
       }
+=======
+>>>>>>> 2896ede36f47027c152f24aec5d626dd767fd7b4
     }
     Views: {
       [_ in never]: never
